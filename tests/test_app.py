@@ -3,6 +3,7 @@ from pathlib import Path
 from slate.app import Slate
 from slate.cli import format_surface, render_results
 from slate.roadmap import DELIVERY_PHASES, build_execution_plan, execution_progress
+from slate.status import incomplete_phases, load_roadmap_status
 
 
 def test_add_and_persist_surface(tmp_path: Path) -> None:
@@ -102,3 +103,11 @@ def test_complete_deliverable_rejects_unknown_item() -> None:
         assert 'Unknown deliverable' in str(exc)
     else:
         raise AssertionError('Expected ValueError for unknown deliverable')
+
+
+def test_load_roadmap_status_and_incomplete_phases() -> None:
+    status = load_roadmap_status()
+
+    assert status.active_phase == 2
+    assert status.completed_phases == (1,)
+    assert incomplete_phases(len(DELIVERY_PHASES), status.completed_phases) == (2, 3, 4, 5, 6, 7, 8)
