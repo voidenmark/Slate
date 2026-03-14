@@ -43,3 +43,33 @@ test('throws on duplicate ids', () => {
     /already exists/
   );
 });
+
+test('search ranks exact and partial matches', () => {
+  const slate = new Slate();
+
+  slate.addSurface({ id: '1', title: 'Roadmap', kind: 'note', tags: ['planning'] });
+  slate.addSurface({ id: '2', title: 'Roadmap Q4', kind: 'note', tags: ['planning', 'q4'] });
+  slate.addSurface({ id: '3', title: 'Q4 Notes', kind: 'note', tags: ['q4'] });
+
+  const matches = slate.search('roadmap');
+
+  assert.deepEqual(
+    matches.map((surface) => surface.id),
+    ['1', '2']
+  );
+});
+
+test('search supports filters and limits', () => {
+  const slate = new Slate();
+
+  slate.addSurface({ id: 'a', title: 'Home Dashboard', kind: 'dashboard', tags: ['core'] });
+  slate.addSurface({ id: 'b', title: 'Finance Dashboard', kind: 'dashboard', tags: ['finance'] });
+  slate.addSurface({ id: 'c', title: 'Finance Notes', kind: 'note', tags: ['finance'] });
+
+  const financeDashboards = slate.search('finance', { kind: 'dashboard', tag: 'finance', limit: 1 });
+  assert.equal(financeDashboards.length, 1);
+  assert.equal(financeDashboards[0].id, 'b');
+
+  const emptyQuery = slate.search('   ');
+  assert.equal(emptyQuery.length, 0);
+});

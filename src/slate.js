@@ -71,4 +71,79 @@ export class Slate {
   listSurfaces() {
     return [...this.surfaces.values()];
   }
+
+  /**
+   * @param {string} query
+   * @param {{ tag?: string, kind?: string, limit?: number }} [options]
+   */
+  search(query, options = {}) {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    const { tag, kind, limit } = options;
+    const normalizedTag = tag?.toLowerCase();
+    const normalizedKind = kind?.toLowerCase();
+
+    const ranked = [...this.surfaces.values()]
+      .filter((surface) => {
+        if (normalizedTag && !surface.tags.some((surfaceTag) => surfaceTag.toLowerCase() === normalizedTag)) {
+          return false;
+        }
+
+        if (normalizedKind && surface.kind.toLowerCase() !== normalizedKind) {
+          return false;
+        }
+
+        return true;
+      })
+      .map((surface) => ({ surface, score: this.scoreSurface(surface, normalizedQuery) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || a.surface.title.localeCompare(b.surface.title))
+      .map((entry) => entry.surface);
+
+    if (limit === undefined) {
+      return ranked;
+    }
+
+    return ranked.slice(0, Math.max(0, limit));
+  }
+
+  /**
+   * @param {Surface} surface
+   * @param {string} query
+   */
+  scoreSurface(surface, query) {
+    const lowerTitle = surface.title.toLowerCase();
+    const lowerKind = surface.kind.toLowerCase();
+    const lowerTags = surface.tags.map((tag) => tag.toLowerCase());
+
+    let score = 0;
+
+    if (lowerTitle === query) {
+      score += 10;
+    } else if (lowerTitle.startsWith(query)) {
+      score += 6;
+    } else if (lowerTitle.includes(query)) {
+      score += 4;
+    }
+
+    if (lowerKind === query) {
+      score += 5;
+    } else if (lowerKind.includes(query)) {
+      score += 2;
+    }
+
+    for (const tag of lowerTags) {
+      if (tag === query) {
+        score += 4;
+      } else if (tag.includes(query)) {
+        score += 2;
+      }
+    }
+
+    return score;
+  }
 }
