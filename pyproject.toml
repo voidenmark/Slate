@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slate"
+version = "0.1.0"
+description = "One Surface for Everything"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Slate"}]
+
+[project.scripts]
+slate = "slate.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

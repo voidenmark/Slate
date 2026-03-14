@@ -15,4 +15,22 @@ This repository now includes a first-pass technical foundation for SLATE:
 
 - Wire app state into a UI shell (Electron + React).
 - Add persistence layer to connect `appState` and module configuration to SQLite.
-- Implement IPC boundaries for main/renderer separation.
+- Implement IPC boundaries for main/renderer separation
+Slate is a tiny local-first organizer for quick notes, ideas, and tasks.
+
+## Quick start
+
+```bash
+python -m pip install -e .
+slate add "Ideas" "Build Slate" --tag todo --tag product
+slate list
+slate search product
+```
+
+Data is stored in `~/.slate/surfaces.json` by default.
+
+## Development
+
+```bash
+python -m pytest
+```
