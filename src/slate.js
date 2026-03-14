@@ -32,6 +32,20 @@ export class Surface {
       tags: [...this.tags]
     };
   }
+
+  /**
+   * Build a lightweight UI card payload suitable for list rendering.
+   * @returns {{id: string, title: string, subtitle: string, kind: string, badges: string[]}}
+   */
+  toCard() {
+    return {
+      id: this.id,
+      title: this.title,
+      subtitle: `${this.kind.toUpperCase()} · ${this.tags.length} tag${this.tags.length === 1 ? '' : 's'}`,
+      kind: this.kind,
+      badges: [...this.tags]
+    };
+  }
 }
 
 export class Slate {
@@ -74,6 +88,27 @@ export class Slate {
 
   /**
    * @param {string} query
+   */
+  search(query) {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return this.listSurfaces();
+    }
+
+    return this.listSurfaces().filter((surface) => {
+      const inTitle = surface.title.toLowerCase().includes(normalizedQuery);
+      const inKind = surface.kind.toLowerCase().includes(normalizedQuery);
+      const inTags = surface.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery));
+      return inTitle || inKind || inTags;
+    });
+  }
+
+  byKind(kind) {
+    return this.listSurfaces().filter((surface) => surface.kind === kind);
+  }
+
+  cards(query = '') {
+    return this.search(query).map((surface) => surface.toCard());
    * @param {{ tag?: string, kind?: string, limit?: number }} [options]
    */
   search(query, options = {}) {

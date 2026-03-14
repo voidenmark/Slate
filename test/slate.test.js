@@ -44,6 +44,29 @@ test('throws on duplicate ids', () => {
   );
 });
 
+test('supports search and kind filtering for app-style discovery', () => {
+  const slate = new Slate();
+  slate.addSurface({ id: '1', title: 'Sprint Board', kind: 'board', tags: ['work'] });
+  slate.addSurface({ id: '2', title: 'Daily Notes', kind: 'note', tags: ['journal'] });
+
+  assert.equal(slate.search('sprint').length, 1);
+  assert.equal(slate.search('board').length, 1);
+  assert.equal(slate.byKind('note').length, 1);
+});
+
+test('builds UI card payloads', () => {
+  const slate = new Slate();
+  slate.addSurface({ id: 'alpha', title: 'Alpha', kind: 'dashboard', tags: ['focus', 'team'] });
+
+  const cards = slate.cards('alp');
+  assert.equal(cards.length, 1);
+  assert.deepEqual(cards[0], {
+    id: 'alpha',
+    title: 'Alpha',
+    subtitle: 'DASHBOARD · 2 tags',
+    kind: 'dashboard',
+    badges: ['focus', 'team']
+  });
 test('search ranks exact and partial matches', () => {
   const slate = new Slate();
 

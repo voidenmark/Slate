@@ -30,7 +30,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 def format_surface(index: int, title: str, body: str, tags: list[str]) -> str:
     tags_part = ", ".join(tags) if tags else "no tags"
-    return f"{index}. {title}\n   {body}\n   [{tags_part}]"
+    return f"{index:>2}. {title}\n    {body}\n    [{tags_part}]"
+
+
+def render_results(title: str, surfaces: list) -> int:
+    print(title)
+    print("-" * len(title))
+    if not surfaces:
+        print("No surfaces found.")
+        return 0
+
+    for index, surface in enumerate(surfaces, start=1):
+        print(format_surface(index, surface.title, surface.body, surface.tags))
+    print(f"\nTotal: {len(surfaces)}")
+    return 0
 
 
 def main() -> int:
@@ -39,19 +52,15 @@ def main() -> int:
 
     if args.command == "add":
         surface = slate.add_surface(args.title, args.body, tags=args.tag)
-        print(f"Added: {surface.title}")
+        print(f"Added: {surface.title} (tags: {len(surface.tags)})")
         return 0
 
     if args.command == "list":
-        for index, surface in enumerate(slate.surfaces, start=1):
-            print(format_surface(index, surface.title, surface.body, surface.tags))
-        return 0
+        return render_results("All surfaces", slate.surfaces)
 
     if args.command == "search":
         matches = slate.search(args.query)
-        for index, surface in enumerate(matches, start=1):
-            print(format_surface(index, surface.title, surface.body, surface.tags))
-        return 0
+        return render_results(f"Search results for '{args.query}'", matches)
 
     return 1
 
