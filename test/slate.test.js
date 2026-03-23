@@ -7,7 +7,8 @@ import {
   buildExecutionPlan,
   completeDeliverable,
   executionProgress,
-  BrowserModule
+  BrowserModule,
+  SLATE_MAKER
 } from '../src/index.js';
 
 test('adds and retrieves surfaces', () => {
@@ -180,4 +181,23 @@ test('browser module manages tabs, bookmarks, history, ad blocking, and download
 
   assert.equal(browser.closeTab('t2'), true);
   assert.equal(browser.listHistory().length >= 2, true);
+});
+
+
+test('serializes and restores browser module state', () => {
+  const browser = new BrowserModule();
+  browser.openTab({ id: 't1', url: 'https://example.com' });
+  browser.navigateTab('t1', 'https://docs.example.com');
+  browser.addBookmark('https://docs.example.com', 'Docs');
+  browser.addAdBlockRule('ads.');
+  browser.queueDownload({ id: 'd2', url: 'https://example.com/archive.zip' });
+
+  const payload = browser.toJSON();
+  assert.equal(payload.maker, SLATE_MAKER);
+
+  const restored = BrowserModule.fromJSON(payload);
+  assert.equal(restored.listTabs().length, 1);
+  assert.equal(restored.listTabs()[0].url, 'https://docs.example.com');
+  assert.equal(restored.listBookmarks()[0].title, 'Docs');
+  assert.equal(restored.isBlocked('https://ads.example.com/x.js'), true);
 });

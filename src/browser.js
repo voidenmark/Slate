@@ -2,6 +2,8 @@
  * Browser module foundations for Phase 2.
  */
 
+export const SLATE_MAKER = 'VOIDENMARK';
+
 export class BrowserTab {
   /**
    * @param {{ id: string, url: string, title?: string, isPinned?: boolean, isActive?: boolean }} input
@@ -16,6 +18,16 @@ export class BrowserTab {
     this.title = input.title ?? input.url;
     this.isPinned = Boolean(input.isPinned);
     this.isActive = Boolean(input.isActive);
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      url: this.url,
+      title: this.title,
+      isPinned: this.isPinned,
+      isActive: this.isActive
+    };
   }
 }
 
@@ -80,6 +92,19 @@ export class BrowserModule {
 
     target.isActive = true;
     return target;
+  }
+
+  /** @param {string} tabId @param {string} url */
+  navigateTab(tabId, url) {
+    const tab = this.tabs.get(tabId);
+    if (!tab) {
+      throw new Error(`Unknown tab: ${tabId}`);
+    }
+
+    tab.url = url;
+    tab.title = url;
+    this.recordVisit(url, url);
+    return tab;
   }
 
   listTabs() {
@@ -185,5 +210,36 @@ export class BrowserModule {
       sandbox: true,
       adBlocked: this.isBlocked(tab.url)
     };
+  }
+
+  toJSON() {
+    return {
+      maker: SLATE_MAKER,
+      tabs: this.listTabs().map((tab) => tab.toJSON()),
+      bookmarks: this.listBookmarks(),
+      history: [...this.history],
+      downloads: [...this.downloads],
+      adBlockRules: [...this.adBlockRules]
+    };
+  }
+
+  /** @param {{ tabs?: Array<any>, bookmarks?: Array<any>, history?: Array<any>, downloads?: Array<any>, adBlockRules?: Array<string> }} payload */
+  static fromJSON(payload = {}) {
+    const browser = new BrowserModule();
+
+    for (const tabInput of payload.tabs ?? []) {
+      const tab = new BrowserTab(tabInput);
+      browser.tabs.set(tab.id, tab);
+    }
+
+    for (const bookmark of payload.bookmarks ?? []) {
+      browser.bookmarks.set(bookmark.url, bookmark);
+    }
+
+    browser.history = [...(payload.history ?? [])];
+    browser.downloads = [...(payload.downloads ?? [])];
+    browser.adBlockRules = new Set((payload.adBlockRules ?? []).map((rule) => rule.toLowerCase()));
+
+    return browser;
   }
 }

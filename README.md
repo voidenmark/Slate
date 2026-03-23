@@ -2,6 +2,8 @@
 
 One Surface for Everything.
 
+Built by **VOIDENMARK**.
+
 ## Current state
 
 This repository now includes a lightweight domain model and delivery plan scaffolding for building Slate in eight phases.
@@ -12,7 +14,8 @@ This repository now includes a lightweight domain model and delivery plan scaffo
 - Module and app-state primitives for a multi-module desktop shell.
 - SQLite schema and Python database initialization helper.
 - Delivery roadmap constants and execution progress helpers for tracking an 18-week phased plan.
-- Phase 2 browser foundations: tab management, history/bookmarks, ad-block rule matching, download queue state, and webview config scaffolding.
+- Phase 2 browser foundations: tab management, navigation, history/bookmarks, ad-block rule matching, download queue state, and webview config scaffolding.
+- Phase 2 browser checkpoint includes JS/Python state serialization for restoring browser sessions.
 
 ## Delivery phases
 

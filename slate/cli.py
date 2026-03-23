@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from .app import Slate
+from .browser import SLATE_MAKER
 from .roadmap import DELIVERY_PHASES
 from .status import incomplete_phases, load_roadmap_status
 
@@ -68,7 +69,7 @@ def main() -> int:
         return render_results(f"Search results for '{args.query}'", matches)
 
     if args.command == "roadmap":
-        print("Slate delivery roadmap")
+        print(f"Slate delivery roadmap — {SLATE_MAKER}")
         print("---------------------")
         for phase in DELIVERY_PHASES:
             print(f"{phase.id}. {phase.name} ({phase.weeks})")
@@ -80,7 +81,7 @@ def main() -> int:
         status = load_roadmap_status()
         remaining = incomplete_phases(len(DELIVERY_PHASES), status.completed_phases)
 
-        print("Roadmap status")
+        print(f"Roadmap status — {SLATE_MAKER}")
         print("--------------")
         print(f"Active phase: {status.active_phase}")
         print(f"Completed phases: {list(status.completed_phases)}")

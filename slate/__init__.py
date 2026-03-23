@@ -1,4 +1,4 @@
-from .browser import BrowserModule
+from .browser import BrowserModule, SLATE_MAKER
 from .app import Slate
 from .db import initialize_database
 from .roadmap import DELIVERY_PHASES, build_execution_plan, execution_progress
@@ -6,6 +6,7 @@ from .status import load_roadmap_status, incomplete_phases
 
 __all__ = [
     "BrowserModule",
+    "SLATE_MAKER",
     "Slate",
     "initialize_database",
     "DELIVERY_PHASES",

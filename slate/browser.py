@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+
+SLATE_MAKER = "VOIDENMARK"
 
 
 def _now_iso() -> str:
@@ -74,7 +76,7 @@ class BrowserModule:
         del self._tabs[tab_id]
 
         if was_active and self._tabs:
-            first = next(iter(self._tabs.values()))
+            first = next(iter(self.tabs))
             first.is_active = True
 
         return True
@@ -88,6 +90,16 @@ class BrowserModule:
 
         self._tabs[tab_id].is_active = True
         return self._tabs[tab_id]
+
+    def navigate_tab(self, tab_id: str, url: str) -> BrowserTab:
+        if tab_id not in self._tabs:
+            raise ValueError(f"Unknown tab: {tab_id}")
+
+        tab = self._tabs[tab_id]
+        tab.url = url
+        tab.title = url
+        self.record_visit(url, url)
+        return tab
 
     def pin_tab(self, tab_id: str, pinned: bool = True) -> BrowserTab:
         if tab_id not in self._tabs:
@@ -156,3 +168,32 @@ class BrowserModule:
             "sandbox": True,
             "ad_blocked": self.is_blocked(tab.url),
         }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "maker": SLATE_MAKER,
+            "tabs": [asdict(tab) for tab in self.tabs],
+            "bookmarks": [asdict(bookmark) for bookmark in self.bookmarks],
+            "history": [asdict(entry) for entry in self.history()],
+            "downloads": [asdict(download) for download in self.downloads],
+            "ad_block_rules": sorted(self._adblock_rules),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, object]) -> "BrowserModule":
+        browser = cls()
+
+        for item in payload.get("tabs", []):
+            tab = BrowserTab(**item)
+            browser._tabs[tab.id] = tab
+
+        for item in payload.get("bookmarks", []):
+            bookmark = Bookmark(**item)
+            browser._bookmarks[bookmark.url] = bookmark
+
+        browser._history = [HistoryEntry(**item) for item in payload.get("history", [])]
+        browser._downloads = {
+            job.id: job for job in (DownloadJob(**item) for item in payload.get("downloads", []))
+        }
+        browser._adblock_rules = {str(rule).lower() for rule in payload.get("ad_block_rules", [])}
+        return browser

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from slate.app import Slate
-from slate.browser import BrowserModule
+from slate.browser import BrowserModule, SLATE_MAKER
 from slate.cli import format_surface, render_results
 from slate.roadmap import DELIVERY_PHASES, build_execution_plan, execution_progress
 from slate.status import incomplete_phases, load_roadmap_status
@@ -144,3 +144,21 @@ def test_browser_module_phase_two_foundations() -> None:
 
     assert browser.close_tab('tab-2') is True
     assert len(browser.history()) >= 2
+
+
+
+def test_browser_module_round_trip_snapshot() -> None:
+    browser = BrowserModule()
+    browser.open_tab('tab-1', 'https://example.com')
+    browser.navigate_tab('tab-1', 'https://docs.example.com')
+    browser.add_bookmark('https://docs.example.com', 'Docs')
+    browser.add_adblock_rule('ads.')
+    browser.queue_download('download-2', 'https://example.com/archive.zip')
+
+    snapshot = browser.to_dict()
+    assert snapshot['maker'] == SLATE_MAKER
+
+    restored = BrowserModule.from_dict(snapshot)
+    assert restored.tabs[0].url == 'https://docs.example.com'
+    assert restored.bookmarks[0].title == 'Docs'
+    assert restored.is_blocked('https://ads.example.com/script.js') is True
