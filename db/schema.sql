@@ -42,6 +42,33 @@ CREATE TABLE IF NOT EXISTS browser_tabs (
   FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE SET NULL
 );
 
+
+
+CREATE TABLE IF NOT EXISTS browser_bookmarks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS browser_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  visited_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS browser_downloads (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  status TEXT NOT NULL,
+  saved_path TEXT,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -97,3 +124,7 @@ CREATE INDEX IF NOT EXISTS idx_browser_tabs_user_last_accessed ON browser_tabs(u
 CREATE INDEX IF NOT EXISTS idx_notes_user_updated_at ON notes(user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_user_last_message ON chat_conversations(user_id, last_message_at DESC);
 CREATE INDEX IF NOT EXISTS idx_emails_thread ON emails(thread_id);
+
+CREATE INDEX IF NOT EXISTS idx_browser_bookmarks_user_created_at ON browser_bookmarks(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_browser_history_user_visited_at ON browser_history(user_id, visited_at DESC);
+CREATE INDEX IF NOT EXISTS idx_browser_downloads_user_created_at ON browser_downloads(user_id, created_at DESC);

@@ -79,50 +79,36 @@ export class Slate {
    * @param {string} tag
    */
   byTag(tag) {
-    return [...this.surfaces.values()].filter((surface) => surface.tags.includes(tag));
+    return this.listSurfaces().filter((surface) => surface.tags.includes(tag));
+  }
+
+  /**
+   * @param {string} kind
+   */
+  byKind(kind) {
+    return this.listSurfaces().filter((surface) => surface.kind === kind);
   }
 
   listSurfaces() {
     return [...this.surfaces.values()];
   }
 
-  /**
-   * @param {string} query
-   */
-  search(query) {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return this.listSurfaces();
-    }
-
-    return this.listSurfaces().filter((surface) => {
-      const inTitle = surface.title.toLowerCase().includes(normalizedQuery);
-      const inKind = surface.kind.toLowerCase().includes(normalizedQuery);
-      const inTags = surface.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery));
-      return inTitle || inKind || inTags;
-    });
-  }
-
-  byKind(kind) {
-    return this.listSurfaces().filter((surface) => surface.kind === kind);
-  }
-
   cards(query = '') {
     return this.search(query).map((surface) => surface.toCard());
+  }
+
+  /**
+   * @param {string} query
    * @param {{ tag?: string, kind?: string, limit?: number }} [options]
    */
-  search(query, options = {}) {
+  search(query = '', options = {}) {
     const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return [];
-    }
 
     const { tag, kind, limit } = options;
     const normalizedTag = tag?.toLowerCase();
     const normalizedKind = kind?.toLowerCase();
 
-    const ranked = [...this.surfaces.values()]
+    const ranked = this.listSurfaces()
       .filter((surface) => {
         if (normalizedTag && !surface.tags.some((surfaceTag) => surfaceTag.toLowerCase() === normalizedTag)) {
           return false;
@@ -134,7 +120,10 @@ export class Slate {
 
         return true;
       })
-      .map((surface) => ({ surface, score: this.scoreSurface(surface, normalizedQuery) }))
+      .map((surface) => ({
+        surface,
+        score: normalizedQuery ? this.scoreSurface(surface, normalizedQuery) : 1
+      }))
       .filter((entry) => entry.score > 0)
       .sort((a, b) => b.score - a.score || a.surface.title.localeCompare(b.surface.title))
       .map((entry) => entry.surface);
