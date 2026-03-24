@@ -1,8 +1,10 @@
+import sys
 from pathlib import Path
 
 from slate.app import Slate
 from slate.browser import BrowserModule, SLATE_MAKER
-from slate.cli import format_surface, render_results
+from slate.browser_store import BrowserStore
+from slate.cli import format_surface, main, render_results
 from slate.roadmap import DELIVERY_PHASES, build_execution_plan, execution_progress
 from slate.status import incomplete_phases, load_roadmap_status
 
@@ -65,7 +67,7 @@ def test_initialize_database_creates_tables(tmp_path: Path) -> None:
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
 
-    assert {"users", "workspaces", "browser_tabs", "notes", "chat_conversations", "emails"}.issubset(table_names)
+    assert {"users", "workspaces", "browser_tabs", "browser_bookmarks", "browser_history", "browser_downloads", "notes", "chat_conversations", "emails"}.issubset(table_names)
 
 
 def test_build_execution_plan_has_eight_pending_phases() -> None:
@@ -162,3 +164,91 @@ def test_browser_module_round_trip_snapshot() -> None:
     assert restored.tabs[0].url == 'https://docs.example.com'
     assert restored.bookmarks[0].title == 'Docs'
     assert restored.is_blocked('https://ads.example.com/script.js') is True
+
+
+
+def test_browser_store_round_trip_snapshot_sqlite(tmp_path: Path) -> None:
+    db_path = tmp_path / 'browser.db'
+    store = BrowserStore(db_path)
+
+    browser = BrowserModule()
+    browser.open_tab('t-1', 'https://example.com', 'Example')
+    browser.pin_tab('t-1', True)
+    browser.open_tab('t-2', 'https://news.example.com', 'News')
+    browser.add_bookmark('https://docs.example.com', 'Docs')
+    browser.record_visit('https://docs.example.com', 'Docs')
+    browser.queue_download('dl-1', 'https://example.com/file.zip')
+    browser.update_download('dl-1', 'completed', '/tmp/file.zip')
+
+    store.save_snapshot(user_id='user-1', browser=browser, workspace_id='ws-1', session_id='session-1')
+
+    restored = store.load_snapshot('user-1')
+    assert len(restored.tabs) == 2
+    assert restored.tabs[0].is_pinned is True
+    assert len(restored.bookmarks) == 1
+    assert len(restored.history()) >= 2
+    assert restored.downloads[0].status == 'completed'
+
+
+
+def test_cli_browser_commands_round_trip(tmp_path: Path, monkeypatch, capsys) -> None:
+    db_path = tmp_path / 'cli-browser.db'
+
+    monkeypatch.setattr(
+        sys,
+        'argv',
+        ['slate', '--store', str(tmp_path / 'surfaces.json'), 'browser', 'open', 'user-1', 'tab-1', 'https://example.com', '--db', str(db_path)],
+    )
+    assert main() == 0
+
+    monkeypatch.setattr(
+        sys,
+        'argv',
+        ['slate', '--store', str(tmp_path / 'surfaces.json'), 'browser', 'bookmark', 'user-1', 'https://docs.example.com', '--title', 'Docs', '--db', str(db_path)],
+    )
+    assert main() == 0
+
+    monkeypatch.setattr(
+        sys,
+        'argv',
+        ['slate', '--store', str(tmp_path / 'surfaces.json'), 'browser', 'list-tabs', 'user-1', '--db', str(db_path)],
+    )
+    assert main() == 0
+
+    monkeypatch.setattr(
+        sys,
+        'argv',
+        ['slate', '--store', str(tmp_path / 'surfaces.json'), 'browser', 'list-bookmarks', 'user-1', '--db', str(db_path)],
+    )
+    assert main() == 0
+
+    captured = capsys.readouterr().out
+    assert 'tab-1' in captured
+    assert 'Docs' in captured
+
+
+
+def test_cli_browser_tab_controls_and_downloads(tmp_path: Path, monkeypatch, capsys) -> None:
+    db_path = tmp_path / 'cli-browser-controls.db'
+    store_path = tmp_path / 'surfaces.json'
+
+    commands = [
+        ['slate', '--store', str(store_path), 'browser', 'open', 'user-2', 'tab-a', 'https://a.example', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'open', 'user-2', 'tab-b', 'https://b.example', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'activate', 'user-2', 'tab-b', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'pin', 'user-2', 'tab-b', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'download', 'user-2', 'dl-2', 'https://a.example/file.zip', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'download-status', 'user-2', 'dl-2', 'completed', '--saved-path', '/tmp/file.zip', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'list-tabs', 'user-2', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'list-downloads', 'user-2', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'close', 'user-2', 'tab-a', '--db', str(db_path)],
+    ]
+
+    for argv in commands:
+        monkeypatch.setattr(sys, 'argv', argv)
+        assert main() == 0
+
+    output = capsys.readouterr().out
+    assert '[pinned]' in output
+    assert 'dl-2: completed' in output
+    assert 'Closed tab tab-a: True' in output

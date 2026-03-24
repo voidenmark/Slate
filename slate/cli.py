@@ -5,11 +5,13 @@ from pathlib import Path
 
 from .app import Slate
 from .browser import SLATE_MAKER
+from .browser_store import BrowserStore
 from .roadmap import DELIVERY_PHASES
 from .status import incomplete_phases, load_roadmap_status
 
 
 DEFAULT_PATH = Path.home() / ".slate" / "surfaces.json"
+DEFAULT_DB_PATH = Path.home() / ".slate" / "slate.db"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,6 +33,64 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("roadmap", help="Show the 18-week delivery roadmap")
     subparsers.add_parser("status", help="Show current roadmap completion status")
 
+    browser_parser = subparsers.add_parser("browser", help="Persisted browser operations")
+    browser_subcommands = browser_parser.add_subparsers(dest="browser_command", required=True)
+
+    browser_open = browser_subcommands.add_parser("open", help="Open a browser tab for a user")
+    browser_open.add_argument("user_id")
+    browser_open.add_argument("tab_id")
+    browser_open.add_argument("url")
+    browser_open.add_argument("--title", default=None)
+    browser_open.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_close = browser_subcommands.add_parser("close", help="Close a browser tab")
+    browser_close.add_argument("user_id")
+    browser_close.add_argument("tab_id")
+    browser_close.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_activate = browser_subcommands.add_parser("activate", help="Activate a browser tab")
+    browser_activate.add_argument("user_id")
+    browser_activate.add_argument("tab_id")
+    browser_activate.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_pin = browser_subcommands.add_parser("pin", help="Pin or unpin a browser tab")
+    browser_pin.add_argument("user_id")
+    browser_pin.add_argument("tab_id")
+    browser_pin.add_argument("--off", action="store_true", help="Unpin tab instead of pinning")
+    browser_pin.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_bookmark = browser_subcommands.add_parser("bookmark", help="Bookmark a URL for a user")
+    browser_bookmark.add_argument("user_id")
+    browser_bookmark.add_argument("url")
+    browser_bookmark.add_argument("--title", default=None)
+    browser_bookmark.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_unbookmark = browser_subcommands.add_parser("unbookmark", help="Remove bookmark for a URL")
+    browser_unbookmark.add_argument("user_id")
+    browser_unbookmark.add_argument("url")
+    browser_unbookmark.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_download = browser_subcommands.add_parser("download", help="Queue a browser download")
+    browser_download.add_argument("user_id")
+    browser_download.add_argument("download_id")
+    browser_download.add_argument("url")
+    browser_download.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_download_status = browser_subcommands.add_parser("download-status", help="Update download status")
+    browser_download_status.add_argument("user_id")
+    browser_download_status.add_argument("download_id")
+    browser_download_status.add_argument("status", choices=["queued", "in_progress", "completed", "failed"])
+    browser_download_status.add_argument("--saved-path", default=None)
+    browser_download_status.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_subcommands.add_parser("list-tabs", help="List persisted browser tabs for a user")
+    browser_subcommands.add_parser("list-bookmarks", help="List persisted bookmarks for a user")
+    browser_subcommands.add_parser("list-downloads", help="List persisted downloads for a user")
+    for subcommand in ("list-tabs", "list-bookmarks", "list-downloads"):
+        parser_ref = browser_subcommands.choices[subcommand]
+        parser_ref.add_argument("user_id")
+        parser_ref.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
     return parser
 
 
@@ -50,6 +110,90 @@ def render_results(title: str, surfaces: list) -> int:
         print(format_surface(index, surface.title, surface.body, surface.tags))
     print(f"\nTotal: {len(surfaces)}")
     return 0
+
+
+def _handle_browser_command(args: argparse.Namespace) -> int:
+    store = BrowserStore(args.db)
+    browser = store.load_snapshot(args.user_id)
+
+    if args.browser_command == "open":
+        browser.open_tab(args.tab_id, args.url, args.title)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Opened tab {args.tab_id} for {args.user_id}. Total tabs: {len(browser.tabs)}")
+        return 0
+
+    if args.browser_command == "close":
+        closed = browser.close_tab(args.tab_id)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Closed tab {args.tab_id}: {closed}. Total tabs: {len(browser.tabs)}")
+        return 0
+
+    if args.browser_command == "activate":
+        browser.activate_tab(args.tab_id)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Activated tab {args.tab_id} for {args.user_id}.")
+        return 0
+
+    if args.browser_command == "pin":
+        pinned = not args.off
+        browser.pin_tab(args.tab_id, pinned)
+        store.save_snapshot(args.user_id, browser)
+        state = "pinned" if pinned else "unpinned"
+        print(f"{state.capitalize()} tab {args.tab_id} for {args.user_id}.")
+        return 0
+
+    if args.browser_command == "bookmark":
+        browser.add_bookmark(args.url, args.title)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Saved bookmark for {args.user_id}. Total bookmarks: {len(browser.bookmarks)}")
+        return 0
+
+    if args.browser_command == "unbookmark":
+        removed = browser.remove_bookmark(args.url)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Removed bookmark {args.url}: {removed}. Total bookmarks: {len(browser.bookmarks)}")
+        return 0
+
+    if args.browser_command == "download":
+        browser.queue_download(args.download_id, args.url)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Queued download {args.download_id} for {args.user_id}.")
+        return 0
+
+    if args.browser_command == "download-status":
+        browser.update_download(args.download_id, args.status, args.saved_path)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Updated download {args.download_id} to {args.status}.")
+        return 0
+
+    if args.browser_command == "list-tabs":
+        print(f"Browser tabs — {args.user_id}")
+        print("---------------------")
+        for tab in browser.tabs:
+            marker = "*" if tab.is_active else " "
+            pin = " [pinned]" if tab.is_pinned else ""
+            print(f"{marker} {tab.id}: {tab.title} <{tab.url}>{pin}")
+        print(f"Total tabs: {len(browser.tabs)}")
+        return 0
+
+    if args.browser_command == "list-bookmarks":
+        print(f"Browser bookmarks — {args.user_id}")
+        print("---------------------------")
+        for bookmark in browser.bookmarks:
+            print(f"- {bookmark.title} <{bookmark.url}>")
+        print(f"Total bookmarks: {len(browser.bookmarks)}")
+        return 0
+
+    if args.browser_command == "list-downloads":
+        print(f"Browser downloads — {args.user_id}")
+        print("--------------------------")
+        for download in browser.downloads:
+            saved = f" -> {download.saved_path}" if download.saved_path else ""
+            print(f"- {download.id}: {download.status} <{download.url}>{saved}")
+        print(f"Total downloads: {len(browser.downloads)}")
+        return 0
+
+    return 1
 
 
 def main() -> int:
@@ -92,6 +236,9 @@ def main() -> int:
             f"Tell me to continue and I will start Phase {status.active_phase}, or tell me you are done for now."
         )
         return 0
+
+    if args.command == "browser":
+        return _handle_browser_command(args)
 
     return 1
 
