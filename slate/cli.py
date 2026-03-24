@@ -53,6 +53,12 @@ def build_parser() -> argparse.ArgumentParser:
     browser_activate.add_argument("tab_id")
     browser_activate.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
 
+    browser_navigate = browser_subcommands.add_parser("navigate", help="Navigate an existing tab to a URL")
+    browser_navigate.add_argument("user_id")
+    browser_navigate.add_argument("tab_id")
+    browser_navigate.add_argument("url")
+    browser_navigate.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
     browser_pin = browser_subcommands.add_parser("pin", help="Pin or unpin a browser tab")
     browser_pin.add_argument("user_id")
     browser_pin.add_argument("tab_id")
@@ -70,11 +76,26 @@ def build_parser() -> argparse.ArgumentParser:
     browser_unbookmark.add_argument("url")
     browser_unbookmark.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
 
+    browser_addrule = browser_subcommands.add_parser("add-rule", help="Add an ad-block rule")
+    browser_addrule.add_argument("user_id")
+    browser_addrule.add_argument("pattern")
+    browser_addrule.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_removerule = browser_subcommands.add_parser("remove-rule", help="Remove an ad-block rule")
+    browser_removerule.add_argument("user_id")
+    browser_removerule.add_argument("pattern")
+    browser_removerule.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
     browser_download = browser_subcommands.add_parser("download", help="Queue a browser download")
     browser_download.add_argument("user_id")
     browser_download.add_argument("download_id")
     browser_download.add_argument("url")
     browser_download.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+
+    browser_webview = browser_subcommands.add_parser("webview", help="Show webview config for a tab")
+    browser_webview.add_argument("user_id")
+    browser_webview.add_argument("tab_id")
+    browser_webview.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
 
     browser_download_status = browser_subcommands.add_parser("download-status", help="Update download status")
     browser_download_status.add_argument("user_id")
@@ -86,7 +107,8 @@ def build_parser() -> argparse.ArgumentParser:
     browser_subcommands.add_parser("list-tabs", help="List persisted browser tabs for a user")
     browser_subcommands.add_parser("list-bookmarks", help="List persisted bookmarks for a user")
     browser_subcommands.add_parser("list-downloads", help="List persisted downloads for a user")
-    for subcommand in ("list-tabs", "list-bookmarks", "list-downloads"):
+    browser_subcommands.add_parser("list-rules", help="List persisted ad-block rules for a user")
+    for subcommand in ("list-tabs", "list-bookmarks", "list-downloads", "list-rules"):
         parser_ref = browser_subcommands.choices[subcommand]
         parser_ref.add_argument("user_id")
         parser_ref.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
@@ -134,6 +156,12 @@ def _handle_browser_command(args: argparse.Namespace) -> int:
         print(f"Activated tab {args.tab_id} for {args.user_id}.")
         return 0
 
+    if args.browser_command == "navigate":
+        browser.navigate_tab(args.tab_id, args.url)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Navigated tab {args.tab_id} to {args.url}.")
+        return 0
+
     if args.browser_command == "pin":
         pinned = not args.off
         browser.pin_tab(args.tab_id, pinned)
@@ -154,10 +182,27 @@ def _handle_browser_command(args: argparse.Namespace) -> int:
         print(f"Removed bookmark {args.url}: {removed}. Total bookmarks: {len(browser.bookmarks)}")
         return 0
 
+    if args.browser_command == "add-rule":
+        browser.add_adblock_rule(args.pattern)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Added ad-block rule '{args.pattern}' for {args.user_id}.")
+        return 0
+
+    if args.browser_command == "remove-rule":
+        removed = browser.remove_adblock_rule(args.pattern)
+        store.save_snapshot(args.user_id, browser)
+        print(f"Removed ad-block rule '{args.pattern}' for {args.user_id}: {removed}.")
+        return 0
+
     if args.browser_command == "download":
         browser.queue_download(args.download_id, args.url)
         store.save_snapshot(args.user_id, browser)
         print(f"Queued download {args.download_id} for {args.user_id}.")
+        return 0
+
+    if args.browser_command == "webview":
+        config = browser.webview_config(args.tab_id)
+        print(f"WebView config for {args.tab_id}: {config}")
         return 0
 
     if args.browser_command == "download-status":
@@ -182,6 +227,14 @@ def _handle_browser_command(args: argparse.Namespace) -> int:
         for bookmark in browser.bookmarks:
             print(f"- {bookmark.title} <{bookmark.url}>")
         print(f"Total bookmarks: {len(browser.bookmarks)}")
+        return 0
+
+    if args.browser_command == "list-rules":
+        print(f"Ad-block rules — {args.user_id}")
+        print("-------------------------")
+        for pattern in browser.adblock_rules:
+            print(f"- {pattern}")
+        print(f"Total rules: {len(browser.adblock_rules)}")
         return 0
 
     if args.browser_command == "list-downloads":

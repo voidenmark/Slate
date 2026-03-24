@@ -69,6 +69,15 @@ CREATE TABLE IF NOT EXISTS browser_downloads (
   created_at INTEGER NOT NULL
 );
 
+
+
+CREATE TABLE IF NOT EXISTS browser_adblock_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  pattern TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -128,3 +137,4 @@ CREATE INDEX IF NOT EXISTS idx_emails_thread ON emails(thread_id);
 CREATE INDEX IF NOT EXISTS idx_browser_bookmarks_user_created_at ON browser_bookmarks(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_browser_history_user_visited_at ON browser_history(user_id, visited_at DESC);
 CREATE INDEX IF NOT EXISTS idx_browser_downloads_user_created_at ON browser_downloads(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_browser_adblock_rules_user_created_at ON browser_adblock_rules(user_id, created_at DESC);

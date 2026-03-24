@@ -154,6 +154,15 @@ export class BrowserModule {
     return this.adBlockRules.size;
   }
 
+  /** @param {string} pattern */
+  removeAdBlockRule(pattern) {
+    return this.adBlockRules.delete(pattern.toLowerCase());
+  }
+
+  listAdBlockRules() {
+    return [...this.adBlockRules].sort();
+  }
+
   /** @param {string} url */
   isBlocked(url) {
     const lowerUrl = url.toLowerCase();
@@ -219,7 +228,7 @@ export class BrowserModule {
       bookmarks: this.listBookmarks(),
       history: [...this.history],
       downloads: [...this.downloads],
-      adBlockRules: [...this.adBlockRules]
+      adBlockRules: this.listAdBlockRules()
     };
   }
 

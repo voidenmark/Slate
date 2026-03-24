@@ -132,6 +132,17 @@ class BrowserModule:
         self._adblock_rules.add(pattern.lower())
         return len(self._adblock_rules)
 
+    def remove_adblock_rule(self, pattern: str) -> bool:
+        normalized = pattern.lower()
+        if normalized not in self._adblock_rules:
+            return False
+        self._adblock_rules.remove(normalized)
+        return True
+
+    @property
+    def adblock_rules(self) -> tuple[str, ...]:
+        return tuple(sorted(self._adblock_rules))
+
     def is_blocked(self, url: str) -> bool:
         lower_url = url.lower()
         return any(pattern in lower_url for pattern in self._adblock_rules)
@@ -176,7 +187,7 @@ class BrowserModule:
             "bookmarks": [asdict(bookmark) for bookmark in self.bookmarks],
             "history": [asdict(entry) for entry in self.history()],
             "downloads": [asdict(download) for download in self.downloads],
-            "ad_block_rules": sorted(self._adblock_rules),
+            "ad_block_rules": list(self.adblock_rules),
         }
 
     @classmethod

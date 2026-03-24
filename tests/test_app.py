@@ -67,7 +67,7 @@ def test_initialize_database_creates_tables(tmp_path: Path) -> None:
             for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         }
 
-    assert {"users", "workspaces", "browser_tabs", "browser_bookmarks", "browser_history", "browser_downloads", "notes", "chat_conversations", "emails"}.issubset(table_names)
+    assert {"users", "workspaces", "browser_tabs", "browser_bookmarks", "browser_history", "browser_downloads", "browser_adblock_rules", "notes", "chat_conversations", "emails"}.issubset(table_names)
 
 
 def test_build_execution_plan_has_eight_pending_phases() -> None:
@@ -177,6 +177,7 @@ def test_browser_store_round_trip_snapshot_sqlite(tmp_path: Path) -> None:
     browser.open_tab('t-2', 'https://news.example.com', 'News')
     browser.add_bookmark('https://docs.example.com', 'Docs')
     browser.record_visit('https://docs.example.com', 'Docs')
+    browser.add_adblock_rule('ads.')
     browser.queue_download('dl-1', 'https://example.com/file.zip')
     browser.update_download('dl-1', 'completed', '/tmp/file.zip')
 
@@ -188,6 +189,7 @@ def test_browser_store_round_trip_snapshot_sqlite(tmp_path: Path) -> None:
     assert len(restored.bookmarks) == 1
     assert len(restored.history()) >= 2
     assert restored.downloads[0].status == 'completed'
+    assert restored.is_blocked('https://ads.example.com/banner.js') is True
 
 
 
@@ -237,10 +239,15 @@ def test_cli_browser_tab_controls_and_downloads(tmp_path: Path, monkeypatch, cap
         ['slate', '--store', str(store_path), 'browser', 'open', 'user-2', 'tab-b', 'https://b.example', '--db', str(db_path)],
         ['slate', '--store', str(store_path), 'browser', 'activate', 'user-2', 'tab-b', '--db', str(db_path)],
         ['slate', '--store', str(store_path), 'browser', 'pin', 'user-2', 'tab-b', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'navigate', 'user-2', 'tab-b', 'https://docs.example', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'add-rule', 'user-2', 'ads.', '--db', str(db_path)],
         ['slate', '--store', str(store_path), 'browser', 'download', 'user-2', 'dl-2', 'https://a.example/file.zip', '--db', str(db_path)],
         ['slate', '--store', str(store_path), 'browser', 'download-status', 'user-2', 'dl-2', 'completed', '--saved-path', '/tmp/file.zip', '--db', str(db_path)],
         ['slate', '--store', str(store_path), 'browser', 'list-tabs', 'user-2', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'webview', 'user-2', 'tab-b', '--db', str(db_path)],
         ['slate', '--store', str(store_path), 'browser', 'list-downloads', 'user-2', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'list-rules', 'user-2', '--db', str(db_path)],
+        ['slate', '--store', str(store_path), 'browser', 'remove-rule', 'user-2', 'ads.', '--db', str(db_path)],
         ['slate', '--store', str(store_path), 'browser', 'close', 'user-2', 'tab-a', '--db', str(db_path)],
     ]
 
@@ -252,3 +259,5 @@ def test_cli_browser_tab_controls_and_downloads(tmp_path: Path, monkeypatch, cap
     assert '[pinned]' in output
     assert 'dl-2: completed' in output
     assert 'Closed tab tab-a: True' in output
+    assert 'ads.' in output
+    assert 'WebView config for tab-b' in output

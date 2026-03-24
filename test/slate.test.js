@@ -1,3 +1,6 @@
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -8,7 +11,8 @@ import {
   completeDeliverable,
   executionProgress,
   BrowserModule,
-  SLATE_MAKER
+  SLATE_MAKER,
+  BrowserStore
 } from '../src/index.js';
 
 test('adds and retrieves surfaces', () => {
@@ -200,4 +204,33 @@ test('serializes and restores browser module state', () => {
   assert.equal(restored.listTabs()[0].url, 'https://docs.example.com');
   assert.equal(restored.listBookmarks()[0].title, 'Docs');
   assert.equal(restored.isBlocked('https://ads.example.com/x.js'), true);
+});
+
+
+test('removes ad-block rules', () => {
+  const browser = new BrowserModule();
+  browser.addAdBlockRule('ads.');
+  assert.equal(browser.removeAdBlockRule('ads.'), true);
+  assert.equal(browser.isBlocked('https://ads.example.com/a.js'), false);
+});
+
+test('browser store persists snapshots per user', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'slate-browser-'));
+  const path = join(dir, 'browser.json');
+  const store = new BrowserStore(path);
+
+  const browser = new BrowserModule();
+  browser.openTab({ id: 'a', url: 'https://example.com' });
+  browser.addBookmark('https://docs.example.com', 'Docs');
+  browser.addAdBlockRule('ads.');
+
+  await store.saveSnapshot('user-1', browser);
+
+  const restored = await store.loadSnapshot('user-1');
+  assert.equal(restored.listTabs().length, 1);
+  assert.equal(restored.listBookmarks()[0].title, 'Docs');
+  assert.equal(restored.isBlocked('https://ads.example.com/banner.js'), true);
+
+  const raw = JSON.parse(await readFile(path, 'utf8'));
+  assert.ok(raw['user-1']);
 });

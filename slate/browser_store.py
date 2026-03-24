@@ -32,6 +32,7 @@ class BrowserStore:
             connection.execute("DELETE FROM browser_bookmarks WHERE user_id = ?", (user_id,))
             connection.execute("DELETE FROM browser_history WHERE user_id = ?", (user_id,))
             connection.execute("DELETE FROM browser_downloads WHERE user_id = ?", (user_id,))
+            connection.execute("DELETE FROM browser_adblock_rules WHERE user_id = ?", (user_id,))
 
             for position, tab in enumerate(browser.tabs):
                 connection.execute(
@@ -77,6 +78,15 @@ class BrowserStore:
                     VALUES (?, ?, ?, ?, ?, strftime('%s','now'))
                     """,
                     (download.id, user_id, download.url, download.status, download.saved_path),
+                )
+
+            for pattern in sorted(browser._adblock_rules):
+                connection.execute(
+                    """
+                    INSERT INTO browser_adblock_rules (user_id, pattern, created_at)
+                    VALUES (?, ?, strftime('%s','now'))
+                    """,
+                    (user_id, pattern),
                 )
 
             connection.commit()
@@ -151,5 +161,16 @@ class BrowserStore:
                 )
                 for row in downloads
             }
+
+            rules = connection.execute(
+                """
+                SELECT pattern
+                FROM browser_adblock_rules
+                WHERE user_id = ?
+                ORDER BY id ASC
+                """,
+                (user_id,),
+            ).fetchall()
+            browser._adblock_rules = {row["pattern"].lower() for row in rules}
 
         return browser
