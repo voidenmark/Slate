@@ -168,17 +168,16 @@ class BrowserModule:
     def downloads(self) -> tuple[DownloadJob, ...]:
         return tuple(self._downloads.values())
 
-    def webview_config(self, tab_id: str) -> dict[str, object]:
+    def webview_ipc(self, tab_id: str) -> dict[str, object]:
         if tab_id not in self._tabs:
             raise ValueError(f"Unknown tab: {tab_id}")
 
+        from .ipc import create_webview_ipc
+
         tab = self._tabs[tab_id]
-        return {
-            "tab_id": tab.id,
-            "src": tab.url,
-            "sandbox": True,
-            "ad_blocked": self.is_blocked(tab.url),
-        }
+        return create_webview_ipc(
+            tab_id=tab.id, url=tab.url, ad_blocked=self.is_blocked(tab.url)
+        ).to_dict()
 
     def to_dict(self) -> dict[str, object]:
         return {

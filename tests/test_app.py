@@ -111,9 +111,9 @@ def test_complete_deliverable_rejects_unknown_item() -> None:
 def test_load_roadmap_status_and_incomplete_phases() -> None:
     status = load_roadmap_status()
 
-    assert status.active_phase == 2
-    assert status.completed_phases == (1,)
-    assert incomplete_phases(len(DELIVERY_PHASES), status.completed_phases) == (2, 3, 4, 5, 6, 7, 8)
+    assert status.active_phase == 3
+    assert status.completed_phases == (1, 2)
+    assert incomplete_phases(len(DELIVERY_PHASES), status.completed_phases) == (3, 4, 5, 6, 7, 8)
 
 
 def test_browser_module_phase_two_foundations() -> None:
@@ -141,8 +141,8 @@ def test_browser_module_phase_two_foundations() -> None:
     browser.update_download('download-1', 'completed', '/tmp/file.zip')
     assert browser.downloads[0].status == 'completed'
 
-    config = browser.webview_config('tab-2')
-    assert config['src'] == 'https://news.example.com'
+    config = browser.webview_ipc('tab-2')
+    assert config['payload']['url'] == 'https://news.example.com'
 
     assert browser.close_tab('tab-2') is True
     assert len(browser.history()) >= 2

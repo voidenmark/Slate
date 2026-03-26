@@ -176,8 +176,8 @@ test('browser module manages tabs, bookmarks, history, ad blocking, and download
   browser.addAdBlockRule('ads.');
   assert.equal(browser.isBlocked('https://ads.example.com/banner.js'), true);
 
-  const config = browser.webviewConfig('t2');
-  assert.equal(config.src, 'https://news.example.com');
+  const config = browser.webviewIPC('t2');
+  assert.equal(config.payload.url, 'https://news.example.com');
 
   browser.queueDownload({ id: 'd1', url: 'https://example.com/file.zip' });
   browser.updateDownload('d1', 'completed', '/tmp/file.zip');

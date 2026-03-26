@@ -94,6 +94,18 @@ CREATE TABLE IF NOT EXISTS notes (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS note_blocks (
+  id TEXT PRIMARY KEY,
+  note_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  content TEXT,
+  metadata TEXT,
+  position INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS chat_conversations (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,

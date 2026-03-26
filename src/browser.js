@@ -2,6 +2,8 @@
  * Browser module foundations for Phase 2.
  */
 
+import { createWebviewIPC } from './ipc.js';
+
 export const SLATE_MAKER = 'VOIDENMARK';
 
 export class BrowserTab {
@@ -204,21 +206,16 @@ export class BrowserModule {
   }
 
   /**
-   * Lightweight webview descriptor for IPC integration.
+   * Formal webview IPC message for frontend/backend communication.
    * @param {string} tabId
    */
-  webviewConfig(tabId) {
+  webviewIPC(tabId) {
     const tab = this.tabs.get(tabId);
     if (!tab) {
       throw new Error(`Unknown tab: ${tabId}`);
     }
 
-    return {
-      tabId: tab.id,
-      src: tab.url,
-      sandbox: true,
-      adBlocked: this.isBlocked(tab.url)
-    };
+    return createWebviewIPC(tab.id, tab.url, this.isBlocked(tab.url));
   }
 
   toJSON() {
